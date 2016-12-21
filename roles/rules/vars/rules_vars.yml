@@ -1,0 +1,74 @@
+---
+
+# first in last out
+
+rules:
+  test_1:
+     action: "block"
+     disabled: "false"
+     state: "present"
+     protocol: "udp"
+     tcpipversion: "ipv4"
+     source: "any"
+     sourceport: "any"
+     destination: "any"
+     sourcetype: "address"
+     destinationtype: "(self)"
+     destinationport: "500-600"
+     log: "false"
+     interface: "lan"
+     icmptype: "inforep"
+     description: "block random address access 3"
+
+
+  test_2:
+     action: "block"
+     disabled: "false"
+     state: "present"
+     protocol: "tcp"
+     tcpipversion: "ipv4"
+     source: "any"
+     sourceport: "any"
+     destination: "12.25.56.69"
+     sourcetype: "address"
+     destinationport: ""
+     destinationtype: "network"
+     log: "false"
+     interface: "lan"
+     icmptype: ""
+     description: "test2"
+
+  test_3:
+     action: "block"
+     disabled: "false"
+     state: "present"
+     protocol: "tcp"
+     tcpipversion: "ipv4"
+     source: "any"
+     sourceport: "any"
+     destination: "test_1"
+     sourcetype: "address"
+     destinationport: ""
+     destinationtype: "network"
+     log: "false"
+     interface: "lan"
+     icmptype: ""
+     description: "test3"
+
+  test_4:
+     action: "block"
+     disabled: "false"
+     state: "present"
+     protocol: "tcp"
+     tcpipversion: "ipv4"
+     source: "any"
+     sourceport: "any"
+     destination: "any"
+     sourcetype: "address"
+     destinationport: ""
+     destinationtype: "network"
+     log: "false"
+     interface: "lan"
+     icmptype: ""
+     description: "test4"
+  

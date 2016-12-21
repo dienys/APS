@@ -1,0 +1,247 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+DOCUMENTATION = '''
+module: pfsense_rule
+short_description: Manages pf rules of pFsense
+description:
+  - Manages pf rules of pFsense.
+version_added: "0.0.1"
+options:
+  name:
+    description:
+      - Name used to identify the rule
+    required: true
+
+'''
+
+EXAMPLES = '''
+
+-----------------TODO-----------------
+    - name: Set rule
+      pfsense_rule:
+        name: IP_rule
+
+    - name: Delete rule
+      pfsense_rule:
+        name: IP_rule
+        action: remove
+'''
+
+from ansible.module_utils.basic import *
+import datetime
+import subprocess
+import json
+import os
+
+#--------CREATE RULE--------#
+
+def _add_rule(module, action, disabled, interface, tcpipversion, protocol, source,
+              sourceport, destination, destinationport, log, description, destinationtype, sourcetype, icmptype):
+
+    pfsh_command = "/usr/local/sbin/pfSsh.php";
+    script = """
+
+parse_config(true);
+$newIP['id'] = "";
+$newIP['type'] = '{action}';
+$newIP['descr'] = '{description}';
+$newIP['protocol'] = '{protocol}'; 
+$newIP['interface'] = '{interface}';
+$newIP['icmptype'] = '{icmptype}';
+$newIP['source'] = Array('{sourcetype}' =>'{source}');
+$newIP['destination'] = Array('{destinationtype}' => '{destination}', port => '{destinationport}');
+$config[filter][rule][] = $newIP;
+write_config();
+exec
+
+exit
+"""
+    rc, out, err = module.run_command([pfsh_command],
+                                      executable=pfsh_command,
+                                      data=script.format(action=action,
+                                                         description=description,
+                                                         source=source,
+                                                         destination=destination,
+                                                         sourceport=sourceport,
+                                                         destinationport=destinationport,
+                                                         interface=interface,
+                                                         log=log,
+                                                         protocol=protocol,
+                                                         tcpipversion=tcpipversion,
+                                                         disabled=disabled,
+                                                         destinationtype = destinationtype,
+                                                         sourcetype = sourcetype,
+                                                         icmptype = icmptype),
+                                      use_unsafe_shell=False)
+
+#--------END OF CREATE RULE--------#
+
+#--------REMOVE RULE--------#
+
+def _remove_rule(module, description):
+
+    print "Description dans _remove_rule =================> %s" % description
+    pfsh_command = "/usr/local/sbin/pfSsh.php";
+    script = """
+var_dump($description);
+/*parse_config(true);
+for ($i = 0; $i < 2; $i++)
+    {
+    print("Je suis dans la loop !!!!!!")
+      if ($config['filter']['rule'][$i]['descr'] != null && $config['filter']['rule'][$i]['descr'] != '')
+         {
+             if (isset($config['filter']['rule'][$i]['descr']))
+                {
+                  if ($config['filter']['rule'][$i]['descr'] === '{descri}')
+                     {
+                        unset($config['filter']['rule'][$i]);
+                     }
+                }
+         }
+    }
+write_config();*/
+exec
+
+exit
+"""
+    print "Description dans _remove_rule apres script=================> %s" % description
+    rc, out, err = module.run_command([pfsh_command],
+                                      executable=pfsh_command,
+                                      data=script.format(descri=description),
+                                      use_unsafe_shell=False)
+                                      
+         
+#--------END OF REMOVE RULE--------#
+
+#--------MAIN--------#
+
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            action=dict(required=False, default='pass', choices=['pass', 'block', 'reject']),
+            disabled=dict(required=False, default='pass', choices=['true', 'false']),
+            interface=dict(required=False),
+            tcpipversion=dict(required=False, default='ipv4', choices=['ipv4', 'ipv6', 'ipv4+ipv6']),
+            protocol=dict(required=False, default='tcp', choices=['tcp',
+                                                                  'udp',
+                                                                  'tcpudp',
+                                                                  'icmp',
+                                                                  'esp',
+                                                                  'ah',
+                                                                  'gre',
+                                                                  'ipv6',
+                                                                  'igmp',
+                                                                  'ospf',
+                                                                  'any',
+                                                                  'carp',
+                                                                  'pfsync']),
+            source=dict(required=False, default=''),
+            sourceport=dict(required=False, default='any'),
+            destination=dict(required=False, default=''),
+            destinationport=dict(required=False, default='any'),
+            log=dict(required=False, default='false'),
+            description=dict(required=False, default=''),
+            state=dict(required=False, default='', choices=['present', 'absent']),
+            sourcetype=dict(required=False, default='address', choices=['address', 'network', 'port', 'pppoe', 'l2tp']),
+            destinationtype=dict(required=False, default='address', choices=['address', 'network', 'port', 'pppoe', 'l2tp', '(self)']),
+            icmptype=dict(required=False, default='', choices=['', 'any', 'echreq', 'echorep', 'unreach', 'squench', 'redir', 'althost', 'routeradv', 'routersol', 'timex', 'paramprob', 'timereq', 'timerep', 'inforeq', 'inforep', 'maskreq', 'maskrep', 'trace', 'dataconv', 'mobredir', 'ipv6-where', 'ipv6-here', 'mobregreq', 'mobregrep', 'skip', 'photuris'])
+            
+        ),
+        supports_check_mode=True,
+        mutually_exclusive=[],
+        required_one_of=[]
+    )
+    startd = datetime.datetime.now()
+
+    params = module.params
+
+    #--------CORRECT PARAMS--------#
+    if params['sourcetype'] != 'any':
+        if params['sourcetype'] != 'address':
+            params['source'] = params['sourcetype']
+            params['sourcetype'] = 'network'
+
+    if params['source'] == 'any':
+        params['source'] = ""
+        params['sourcetype'] = 'any'
+                
+    if params['destinationtype'] != 'any':
+        if params['destinationtype'] != 'address':
+            if params['destinationtype'] != 'network':
+                params['destination'] = params['destinationtype']
+                params['destinationtype'] = 'network'
+            else:
+                params['destinationtype'] = 'address'
+            
+    if params['destination'] == 'any':
+        params['destination'] = ""
+        params['destinationtype'] = 'any'
+        
+    if params['protocol'] == 'icmp':
+        if params['icmptype'] == '':
+            params['icmptype'] = 'any'
+    else:
+        params['icmptype'] = ''
+        
+    if params['protocol'] != 'tcp':
+        if params['protocol'] != 'udp':
+            if params['protocol'] != 'tcpucp':
+                params['destinationport'] = ''
+    #--------END OF CORRECT PARAMS--------#
+    
+    #--------CALL TO ADD_RULE IF STATE = PRESENT--------#
+    if params['state'] == 'present':
+        rc, out, err = _add_rule(module = module,
+                                 action=params['action'],
+                                 disabled=params['disabled'],
+                                 interface=params['interface'],
+                                 tcpipversion=params['tcpipversion'],
+                                 protocol=params['protocol'],
+                                 destinationtype=params['destinationtype'],
+                                 sourcetype=params['sourcetype'],
+                                 source=params['source'],
+                                 sourceport=params['sourceport'],
+                                 destination=params['destination'],
+                                 destinationport=params['destinationport'],
+                                 log=params['log'],
+                                 icmptype=params['icmptype'],
+                                 description=params['description'])
+
+        endd = datetime.datetime.now()
+        delta = endd - startd
+        module.exit_json(
+            cmd="add_rule",
+            stdout=out.rstrip("\r\n"),
+            stderr=err.rstrip("\r\n"),
+            rc=rc,
+            start=str(startd),
+            end=str(endd),
+            delta=str(delta),
+            changed=True
+        )
+
+        #--------CALL TO REMOVE_RULE IF STATE = ABSENT--------#
+        
+    if params['state'] == 'absent':
+        print "Description --------------------------> %s" % params['description']
+        rc, out, err = _remove_rule(module = module, description=params['description'])
+        endd = datetime.datetime.now()
+        delta = endd - startd
+        module.exit_json(
+            cmd="remove_rule",
+            stdout=out.rstrip("\r\n"),
+            stderr=err.rstrip("\r\n"),
+            rc=rc,
+            start=str(startd),
+            end=str(endd),
+            delta=str(delta),
+            changed=True
+        )
+    else:
+        module.fail_json(msg='Incorrect state value, possible choices: absent, present(default)')
+
+
+######################################################################
+main()
+
