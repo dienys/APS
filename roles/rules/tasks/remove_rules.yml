@@ -1,18 +1,11 @@
 ---
 
-- name: Update rules
-  hosts: pfsense
-  user: root
-  vars_files:
-    - ../vars/rules_vars.yml
-
-  tasks:
-    - name: debug remove rules
-      debug: msg="description for {{ item.key }} is {{ item.value.description }}"
-      with_dict: "{{rules}}"
-    - name: remove rules
-      pfsense_rule:
-        description: "{{ item.value.description }}"
-        state: "absent"
-        disabled: "true"
-      with_dict: "{{rules}}"
+- name: debug remove rules
+  debug: msg="description for {{ item.key }} is {{ item.value.description }}"
+  with_dict: "{{rules}}"
+- name: remove rules
+  pfsense_rule:
+   description: "{{ item.value.description }}"
+   state: "absent"
+   disabled: "true"
+  with_dict: "{{rules}}"

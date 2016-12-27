@@ -8,10 +8,11 @@
 #- include: roles/aliases/tasks/create_aliases.yml
 #- include: roles/aliases/tasks/remove_aliases.yml
 #- include: roles/rules/tasks/create_rules.yml
-- include: roles/rules/tasks/remove_rules.yml
+ 
 
 
   tasks:
+    - include: roles/rules/tasks/remove_rules.yml
     - name: Create aliases directory
       file: path=/usr/local/www/aliases state=directory
 
